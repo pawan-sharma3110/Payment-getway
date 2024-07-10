@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"payment_getway/db"
+	"payment_getway/handler"
 )
 
 func main() {
@@ -14,9 +15,11 @@ func main() {
 	}
 	defer database.Close()
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
 	fmt.Println("Server run on port :8080")
-	http.HandleFunc("/register", registerUser)
-	http.HandleFunc("/login", loginUser)
+
+	http.HandleFunc("/register", handler.RegisterUser)
+	http.HandleFunc("/login", handler.LoginUser)
+
+	log.Fatal(http.ListenAndServe(":8080", nil))
 
 }

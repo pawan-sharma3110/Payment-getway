@@ -1,21 +1,24 @@
 package handler
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"payment_getway/controller"
+	"payment_getway/db"
 	"payment_getway/model"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var db *sql.DB
-
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
+	database, err := db.DbIn()
+	if err != nil {
+		panic(err)
+	}
+	defer database.Close()
 	var user model.User
-	err := json.NewDecoder(r.Body).Decode(&user)
+	err = json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -29,7 +32,7 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 	user.Password = string(hash)
 
-	err = controller.SaveUserToDB(user)
+	err = controller.SaveUserToDB(database, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -40,18 +43,23 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 func LoginUser(w http.ResponseWriter, r *http.Request) {
+	database, err := db.DbIn()
+	if err != nil {
+		panic(err)
+	}
+	defer database.Close()
 	var credentials struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&credentials)
+	err = json.NewDecoder(r.Body).Decode(&credentials)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	var user model.User
-	err = db.QueryRow("SELECT id, email, password FROM users WHERE email = $1", credentials.Email).Scan(&user.ID, &user.Email, &user.Password)
+	err = database.QueryRow("SELECT id, email, password FROM users WHERE email = $1", credentials.Email).Scan(&user.ID, &user.Email, &user.Password)
 	if err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
