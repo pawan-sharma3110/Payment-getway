@@ -11,9 +11,19 @@ import (
 
 var db *sql.DB
 
+func createUserTable() {
+	query := ` CREATE TABLE IFNOT EXISTS users (
+    id UUID PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`
+	db.Exec(query)
+}
 func SaveUserToDB(user model.User) error {
-	query := `INSERT INTO users (id, email, password) VALUES ($1, $2, $3)`
-	_, err := db.Exec(query, user.ID, user.Email, user.Password)
+	createUserTable()
+	query := `INSERT INTO users (id, email, password,created_at) VALUES ($1, $2, $3,$4)`
+	_, err := db.Exec(query, user.ID, user.Email, user.Password, time.Now())
 	return err
 }
 func GenerateJWT(user model.User) (string, error) {
@@ -28,7 +38,7 @@ func GenerateJWT(user model.User) (string, error) {
 
 	return token.SignedString([]byte("secret"))
 }
-func jwtMiddleware(next http.Handler) http.Handler {
+func JwtMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
